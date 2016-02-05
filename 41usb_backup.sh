@@ -71,6 +71,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	# Organize the photos in a folder for each SD card by UUID,
 	# organize in subfolders by date of latest photo being imported
 	target_dir="$store_mountpoint/$PHOTO_DIR"/"$sd_uuid"/"$last_file_date"
+	# Incoming dir and uuid folders are left as an artifact on the backup drive
 	incoming_dir="$store_mountpoint/$PHOTO_DIR"/incoming/"$sd_uuid"
 	partial_dir="$store_mountpoint/$PHOTO_DIR"/incoming/.partial
 	mkdir -p $target_dir
@@ -80,7 +81,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	echo "Copying SD card to $incoming_dir" >> /tmp/usb_add_info
 	# Blink internet LED while rsync is working (normally either on or off)
 	/usr/sbin/pioctl internet 2
-	rsync -vrtm --size-only --modify-window=2 --remove-source-files --log-file /tmp/rsync_log --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT"/DCIM/ "$target_dir"
+	rsync -vrtm --size-only --modify-window=2 --remove-source-files --log-file $incoming_dir/$last_file_date.rsync.log --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT"/DCIM/ "$target_dir"
 	# Stop blinking of internet LED when rsync is done
 	/usr/sbin/pioctl internet 3
 fi
