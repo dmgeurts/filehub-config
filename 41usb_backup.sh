@@ -26,7 +26,6 @@ echo $$ > /tmp/backup.pid
 SD_MOUNTPOINT=/data/UsbDisk1/Volume1
 STORE_DIR=.vst
 PHOTO_DIR=sd-import
-MEDIA_REGEX=".*\.\(jpg\|gif\|png\|jpeg\|mov\|avi\|wav\|mp3\|aif\|wma\|wmv\|asx\|asf\|m4v\|mp4\|mpg\|3gp\|3g2\|crw\|cr2\|nef\|dng\|mdc\|orf\|sr2\|srf\|lrv\|raw\|thm\|rw2\)"
 # Check if an SD card is inserted (always mounted at the same mount point on the Rav Filehub)
 check_sdcard() {
 	while read device mountpoint fstype remainder; do
