@@ -1,4 +1,8 @@
-## RAVpower WD02 modifications ##
+## RAVpower WD02 & WD01 ##
+
+**Merged fbartels rsync files for sdcard backup**
+
+The following blurb is still from steve8x8 that I forked the code from. Kudos to all those who've invested their time.
 
 When I had purchased a [http://www.ravpower.com/catalog/product/search/filehub](RAVPower FileHub)
 [http://www.ravpower.com/rp-wd02-filehub-6000mah-power-bank-black.html](WD02), I quickly found that it wouldn't be
