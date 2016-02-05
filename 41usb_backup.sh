@@ -78,7 +78,11 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	# Copy the files from the sd card to the target dir, 
 	# Uses filename and size to check for duplicates
 	echo "Copying SD card to $incoming_dir" >> /tmp/usb_add_info
+	# Blink internet LED while rsync is working (normally either on or off)
+	/usr/sbin/pioctl internet 2
 	rsync -vrtm --size-only --modify-window=2 --remove-source-files --log-file /tmp/rsync_log --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT"/DCIM/ "$target_dir"
+	# Stop blinking of internet LED when rsync is done
+	/usr/sbin/pioctl internet 3
 fi
 # Write memory buffer to disk
 sync
