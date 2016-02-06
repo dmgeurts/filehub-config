@@ -10,7 +10,7 @@ I've not experienced empty files as I've been told fbartels has on his WD02.
   * Prevent swap file from using sdcard. I'd prefer to use the USB HD instead for speed and less load on flash.
 
 
-The following blurb is still from steve8x8 that I forked the code from. Kudos to all those who've invested their time.
+**The following blurb is still from steve8x8 that I forked the code from. Kudos to all those who've invested their time.**
 
 When I had purchased a [http://www.ravpower.com/catalog/product/search/filehub](RAVPower FileHub)
 [http://www.ravpower.com/rp-wd02-filehub-6000mah-power-bank-black.html](WD02), I quickly found that it wouldn't be
