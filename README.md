@@ -1,6 +1,14 @@
 ## RAVpower WD02 & WD01 ##
 
 **Merged fbartels rsync files for sdcard backup**
+I've not experienced empty files as I've been told fbartels has on his WD02.
+
+**To Do:**
+  * usb_backup.sh Include test to see if the destination is NTFS. Wifidisk code includes Tuxera ntfs-3g code which seems fine at copying at high speed but is unable to copy timestamps to the destination files and folders. Testing needed to see if removing -t when backing up to an NTFS destination resolves the SIGHUPS I've seen and smoothes things out.
+  * upload rsync 3.1.1 , steve8x8 included 3.1.0 (not urgent as doesn't seem to fix anything for me, but is a fair bit smaller). Not found a 3.1.2 mipsel binary yet, please let me know if you have one.
+  * Document using newer busybox via .vst on USB disk (adds missing tools like recursive grep when troubleshooting)
+  * Prevent swap file from using sdcard. I'd prefer to use the USB HD instead for speed and less load on flash.
+
 
 The following blurb is still from steve8x8 that I forked the code from. Kudos to all those who've invested their time.
 
