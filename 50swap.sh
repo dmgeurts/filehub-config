@@ -3,6 +3,7 @@
 
 # Skip if /etc/init.d/swap is already in FW
 # 2015-09-25: use (existing) directory .vst/ for hosting swapfile
+# 2016-02-05: Don't use sdcard for swapfile. /etc/init.d/vstfunc creates a .vst there...
 
 if ! grep -q SWAP= /etc/firmware
 then
@@ -23,7 +24,7 @@ grep '^/dev/' /proc/mounts \
 | while read device mountpoint fstype remainder
 do
     echo "Checking $device at $mountpoint"
-    if [ ${device:0:7} == "/dev/sd" -a -e "$mountpoint/.vst" ]
+    if [ ${device:0:7} == "/dev/sd" -a -e "$mountpoint/.vst" ] && [[ $mountpoint != /data/UsbDisk1/* ]]
     then
         swapfile="$mountpoint/.vst/swapfile"
         # exit if $swapfile already in use
