@@ -10,7 +10,7 @@ I've not experienced empty files as I've been told fbartels has on his WD02.
   * Prevent swap file from using sdcard. I'd prefer to use the USB HD instead for speed and less load on flash.
   * Test if stopping services speeds up or makes rsync more stable (reduce cpu and memory load, restart services when done)
 
-Before anyone asks. No the timestamp issue is not a common permission problem when mounting. touch -t work perfectly to update the time on an NTFS mount. Had to use a current busybox to test. If you really muct support NTFS, you could have rsync just copy the files. Then script for touch to update the timestamps before removing the old files. Too much work when I don't really care about the file timestamps when there's EXIF data that has a timestamp as well. Or reformat your backup disk to something else...
+Before anyone asks. No the timestamp issue is not a common permission problem when mounting. "touch -t" works perfectly to update the timestamp of files on an NTFS mount. (Had to use a current busybox to test.) If you really muct support NTFS, you could have rsync just copy the files. Then script for touch to update the timestamps before removing the old files. Too much work when I don't really care about the file timestamps when there's EXIF data that has a timestamp as well. Or reformat your backup disk to something else...
 
 **The following blurb is still from steve8x8 that I forked the code from. Kudos to all those who've invested their time.**
 
