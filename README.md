@@ -8,6 +8,7 @@ I've not experienced empty files as I've been told fbartels has on his WD02.
   * upload rsync 3.1.1 , steve8x8 included 3.1.0 (not urgent as doesn't seem to fix anything for me, but is a fair bit smaller). Not found a 3.1.2 mipsel binary yet, please let me know if you have one.
   * Document using newer busybox via .vst on USB disk (adds missing tools like recursive grep when troubleshooting)
   * Prevent swap file from using sdcard. I'd prefer to use the USB HD instead for speed and less load on flash.
+  * Test if stopping services speeds up or makes rsync more stable (reduce cpu and memory load, restart services when done)
 
 
 **The following blurb is still from steve8x8 that I forked the code from. Kudos to all those who've invested their time.**
