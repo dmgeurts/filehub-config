@@ -51,7 +51,14 @@ check_storedrive() {
 			# Add the store dir (containing rsync binary) to the PATH
 			export PATH="$mountpoint/$STORE_DIR":$PATH
 			store_mountpoint="$mountpoint"
+			# Grab device serial number (unused: remove code?)
 			store_id=$(udevadm info -a -p  $(udevadm info -q path -n ${device:0:8}) | grep -m 1 "ATTRS{serial}" | cut -d'"' -f2)
+			# Grab filesystem
+			store_fs=$(stat -f $mountpoint | grep "Type:" | awk '{print $6}')
+			# Check if we have a swap file here that isn't already in use
+			if [ -z $(cat /proc/swaps | grep $mountpoint) -a -e "$mountpoint/$STORE_DIR"/swapfile ];then
+				swapon "$mountpoint/STORE_DIR"/swapfile
+			fi
 			return 1
 		fi
 	done < /proc/mounts
@@ -81,12 +88,23 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	echo "Copying SD card to $incoming_dir" >> /tmp/usb_add_info
 	# Blink internet LED while rsync is working (normally either on or off)
 	/usr/sbin/pioctl internet 2
-	rsync -vrtm --size-only --modify-window=2 --remove-source-files --log-file $incoming_dir/$last_file_date.rsync.log --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT"/DCIM/ "$target_dir"
-	# Stop blinking of internet LED when rsync is done
-	/usr/sbin/pioctl internet 3
+	if [ store_fs == "ntfs" ];then
+		# if ntfs then avoid timestamp errors
+		rsync_opt="vrm"
+	else
+		rsync_opt="vrtm"
+	fi
+	rsync -$rsync_opt --size-only --modify-window=2 --remove-source-files --log-file $incoming_dir/$last_file_date.rsync.log --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT"/DCIM/ "$target_dir"
+fi
+# Stop swap on backup disk to aid unmount
+if [ -n $(cat /proc/swaps | grep $mountpoint) ];then
+	swapoff "$mountpoint/STORE_DIR"/swapfile
 fi
 # Write memory buffer to disk
 sync
+# Stop internet LED blinking when rsync is done (Wifidisk scripts seem to do this twice, for good measure)
+/usr/sbin/pioctl internet 3
+/usr/sbin/pinctl internet 3
 rm /tmp/backup.pid
 exit
 EOF
