@@ -57,7 +57,7 @@ check_storedrive() {
 			store_fs=$fstype
 			# Check if we have a swap file here that isn't already in use
 			if [ -z "$(cat /proc/swaps | grep $mountpoint)" -a -e "$mountpoint/$STORE_DIR"/swapfile ]; then
-				swapon "$mountpoint/STORE_DIR"/swapfile
+				swapon "$mountpoint/$STORE_DIR"/swapfile
 			fi
 			return 1
 		fi
@@ -75,8 +75,8 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ]; then
 	# If no sources.cnf is found we backup DCIM only
 	sources="DCIM"
 	# Check to see if there's more than DCIM to check
-	if [ -e "$store_mountpoint/STORE_DIR"/sources.cnf ]; then
-		sources="$sources"$'/n'"$(cat "$store_mountpoint/STORE_DIR"/sources.cnf)"
+	if [ -e "$store_mountpoint/$STORE_DIR"/sources.cnf ]; then
+		sources="$sources"$'\n'"$(cat "$store_mountpoint/$STORE_DIR"/sources.cnf)"
 	fi
 	# Check folders for files to copy, remove empty folders from the list
 	src_chk=""
@@ -122,7 +122,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $src_chk ]; then
 fi
 # Stop swap on backup disk to aid unmount
 if [ -n $(cat /proc/swaps | grep $mountpoint) ]; then
-	swapoff "$mountpoint/STORE_DIR"/swapfile
+	swapoff "$mountpoint/$STORE_DIR"/swapfile
 fi
 # Write memory buffer to disk
 sync
@@ -131,7 +131,7 @@ sync
 sleep 0.5
 /usr/sbin/pinctl internet 3
 rm /tmp/backup.pid
-echo "Backup done..." >> /tmp/usb_add_info
+echo "Backup script done..." >> /tmp/usb_add_info
 exit
 EOF
 
