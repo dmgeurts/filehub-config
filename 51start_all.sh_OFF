@@ -1,0 +1,89 @@
+# Prevent sdcard from being used for swap location
+# Was fixed in swap.sh but now we're stopping swap.sh being called for sd cards
+
+# busybox 1.12 (WD01 with firmware 2.000.030) does have diff (though not linked in /bin/),
+# it doesn't have patch. Either use the following with a bootstrapped busybox, or have
+# EnterRouterMode.sh replace the file. YMMV...
+
+# /etc/init.d/start_all.sh.patch
+#--- /etc/init.d/start_all.sh     Sun Feb  7 21:30:58 2016
+#+++ /data/UsbDisk1/Volume1/start_all.sh Sun Feb  7 21:29:51 2016
+#@@ -13,8 +13,9 @@
+# fi
+# echo "swapon"
+# while read device mountpoint fstype remainder; do
+#-       str_func_strstr "$mountpoint" "UsbDisk"
+#-        if [ $? -eq 1 ];then
+#+       udisk=$(str_func_strstr "$mountpoint" "UsbDisk")
+#+       sdcard=$(str_func_strstr "$mountpoint" "UsbDisk1")
+#+        if [ $udisk -eq 1 -a $sdcard -eq 0 ];then
+#                echo "mountpoint:$mountpoint" >> /tmp/usb_add_info
+#                 echo /etc/init.d/swap $mountpoint >> /tmp/usb_add_info
+#                 echo 1 > /proc/sys/vm/drop_caches
+
+# replace start_all.sh (only needed once)
+cat <<'EOF' > /etc/init.d/start_all.sh
+#!/bin/sh
+. /etc/init.d/vstfunc
+#swapon
+#   mount.exfat-fuse -o rw,umask=000,noatime,nonempty,asy
+echo "remount"
+if [ ! -f lib/modules/2.6.21/kernel/drivers/tuxera/texfat.ko ]; then
+while read device mountpoint fstype remainder; do
+    if [ "$fstype" == "fuseblk" ];then
+        /usr/sbin/umount2 $mountpoint
+        mount.exfat-fuse -o rw,umask=000,noatime,nonempty,async,iocharset=utf8 $device $mountpoint
+    fi
+done < /proc/mounts
+fi
+echo "swapon"
+while read device mountpoint fstype remainder; do
+	udisk=$(str_func_strstr "$mountpoint" "UsbDisk")
+	sdcard=$(str_func_strstr "$mountpoint" "UsbDisk1")
+    if [ $udisk -eq 1 -a $sdcard -eq 0 ];then
+		echo "mountpoint:$mountpoint" >> /tmp/usb_add_info
+        echo /etc/init.d/swap $mountpoint >> /tmp/usb_add_info
+        echo 1 > /proc/sys/vm/drop_caches
+        /etc/init.d/swap $mountpoint
+		break
+    fi
+done < /proc/mounts
+#start udev
+#echo "start udev"
+#/etc/init.d/udev
+echo "start service"
+ifconfig ra0 down
+netinit.sh
+/usr/sbin/led_control
+
+#/usr/sbin/udhcpd /etc/udhcpd.conf
+#netmod=`nvram_get OperationMode`
+#if [ $netmod -eq 1 ]; then
+#	udhcpc -i eth2.2 -s /sbin/udhcpc.sh -p /var/run/udhcp &
+#else
+#	udhcpc -i apcli0 -s /sbin/udhcpc.sh -p /var/run/udhcp &
+#fi
+#/usr/sbin/upnpd &
+#/usr/sbin/led_control
+# Run the START scripts.
+for i in /etc/rc.d/rc1.d/S* ; do
+    # Check if the subsystem is already up.
+    subsys=${i#/etc/rc.d/rc1.d/S??}
+	str_func_strstr "$i" "S32smbd"
+	if [ $? -eq 1 ]; then
+		echo "smb not start"
+	else
+		echo $i restart
+		$i restart
+	fi
+done
+/etc/rc.d/rc1.d/S32smbd restart
+
+telnetd &
+/usr/sbin/au &
+if [ -f /usr/sbin/usbdongled ]; then
+    usbdongled &
+fi
+EOF
+# Make executable
+chmod +x /etc/init.d/start_all.sh
