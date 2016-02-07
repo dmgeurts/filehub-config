@@ -47,7 +47,7 @@ check_sdcard() {
 # Check if a USB drive is attached which is initialize for storing monitoring data
 check_storedrive() {
 	while read device mountpoint fstype remainder; do
-		if [ ${device:0:7} == "/dev/sd" -a -e "$mountpoint/$STORE_DIR"/rsync ];then
+		if [ ${device:0:7} == "/dev/sd" -a -e "$mountpoint/$STORE_DIR"/rsync ]; then
 			# Add the store dir (containing rsync binary) to the PATH
 			export PATH="$mountpoint/$STORE_DIR":$PATH
 			store_mountpoint="$mountpoint"
@@ -56,7 +56,7 @@ check_storedrive() {
 			# Grab filesystem
 			store_fs=$fstype
 			# Check if we have a swap file here that isn't already in use
-			if [ -z $(cat /proc/swaps | grep $mountpoint) -a -e "$mountpoint/$STORE_DIR"/swapfile ];then
+			if [ -z "$(cat /proc/swaps | grep $mountpoint)" -a -e "$mountpoint/$STORE_DIR"/swapfile ]; then
 				swapon "$mountpoint/STORE_DIR"/swapfile
 			fi
 			return 1
@@ -75,13 +75,13 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	# If no sources.cnf is found we backup DCIM only
 	sources="DCIM"
 	# Check to see if there's more than DCIM to check
-	if [ -e "$store_mountpoint/STORE_DIR"/sources.cnf ];then
+	if [ -e "$store_mountpoint/STORE_DIR"/sources.cnf ]; then
 		sources="$sources"$'/n'"$(cat "$store_mountpoint/STORE_DIR"/sources.cnf)"
 	fi
 	# Check folders for files to copy, remove empty folders from the list
 	src_chk=""
 	printf '%s\n' "$sources" | while IFS= read -r folder;do
-		if [ "$(ls -A "$SD_MOUNTPOINT/$folder/")" ]
+		if [ "$(ls -A "$SD_MOUNTPOINT/$folder/")" ]; then
 			src_chk="$src_chk"$'\n'"$folder"
 		fi
 	done
