@@ -54,7 +54,7 @@ check_storedrive() {
 			# Grab device serial number (unused: remove code?)
 			store_id=$(udevadm info -a -p  $(udevadm info -q path -n ${device:0:8}) | grep -m 1 "ATTRS{serial}" | cut -d'"' -f2)
 			# Grab filesystem
-			store_fs=$(stat -f $mountpoint | grep "Type:" | awk '{print $6}')
+			store_fs=$fstype
 			# Check if we have a swap file here that isn't already in use
 			if [ -z $(cat /proc/swaps | grep $mountpoint) -a -e "$mountpoint/$STORE_DIR"/swapfile ];then
 				swapon "$mountpoint/STORE_DIR"/swapfile
@@ -70,8 +70,25 @@ sdcard=$?
 check_storedrive
 storedrive=$?
 # If both a valid store drive and SD card are mounted,
-# copy the SD card contents to the store drive
+# check if there are files to backup
 if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
+	# If no sources.cnf is found we backup DCIM only
+	sources="DCIM"
+	# Check to see if there's more than DCIM to check
+	if [ -e "$store_mountpoint/STORE_DIR"/sources.cnf ];then
+		sources="$sources"$'/n'"$(cat "$store_mountpoint/STORE_DIR"/sources.cnf)"
+	fi
+	# Check folders for files to copy, remove empty folders from the list
+	src_chk=""
+	printf '%s\n' "$sources" | while IFS= read -r folder;do
+		if [ "$(ls -A "$SD_MOUNTPOINT/$folder/")" ]
+			src_chk="$src_chk"$'\n'"$folder"
+		fi
+	done
+fi
+# If both a valid store drive and SD card are mounted, and we have files to backup,
+# copy the SD card contents to the store drive
+if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $src_chk ];then
 	# Get the date of the latest file on the SD card
 	last_file="$SD_MOUNTPOINT"/DCIM/`ls -1c "$SD_MOUNTPOINT"/DCIM/ | tail -1`
 	last_file_date=`stat "$last_file" | grep Modify | sed -e 's/Modify: //' -e 's/[:| ]/_/g' | cut -d . -f 1`
@@ -88,13 +105,15 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	echo "Copying SD card to $incoming_dir" >> /tmp/usb_add_info
 	# Blink internet LED while rsync is working (normally either on or off)
 	/usr/sbin/pioctl internet 2
-	if [ $store_fs == "ntfs" ];then
+	if [ $store_fs == "tntfs" ];then
 		# if ntfs then avoid timestamp errors
 		rsync_opt="vrm"
 	else
 		rsync_opt="vrtm"
 	fi
-	rsync -$rsync_opt --size-only --modify-window=2 --remove-source-files --log-file $incoming_dir/$last_file_date.rsync.log --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT"/DCIM/ "$target_dir"
+	printf '%s\n' "$src_chk" | while IFS= read -r folder;do
+		rsync -$rsync_opt --size-only --modify-window=2 --remove-source-files --log-file "$incoming_dir/$last_file_date.rsync.log" --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT/$folder/" "$target_dir"
+	done
 fi
 # Stop swap on backup disk to aid unmount
 if [ -n $(cat /proc/swaps | grep $mountpoint) ];then
