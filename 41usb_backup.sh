@@ -71,7 +71,7 @@ check_storedrive
 storedrive=$?
 # If both a valid store drive and SD card are mounted,
 # check if there are files to backup
-if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
+if [ $sdcard -eq 1 -a $storedrive -eq 1 ]; then
 	# If no sources.cnf is found we backup DCIM only
 	sources="DCIM"
 	# Check to see if there's more than DCIM to check
@@ -80,7 +80,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	fi
 	# Check folders for files to copy, remove empty folders from the list
 	src_chk=""
-	printf '%s\n' "$sources" | while IFS= read -r folder;do
+	printf '%s\n' "$sources" | while IFS= read -r folder; do
 		if [ "$(ls -A "$SD_MOUNTPOINT/$folder/")" ]; then
 			src_chk="$src_chk"$'\n'"$folder"
 		fi
@@ -88,7 +88,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 fi
 # If both a valid store drive and SD card are mounted, and we have files to backup,
 # copy the SD card contents to the store drive
-if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $src_chk ];then
+if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $src_chk ]; then
 	# Get the date of the latest file on the SD card
 	last_file="$SD_MOUNTPOINT"/DCIM/`ls -1c "$SD_MOUNTPOINT"/DCIM/ | tail -1`
 	last_file_date=`stat "$last_file" | grep Modify | sed -e 's/Modify: //' -e 's/[:| ]/_/g' | cut -d . -f 1`
@@ -102,27 +102,32 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $src_chk ];then
 	mkdir -p $incoming_dir
 	# Copy the files from the sd card to the target dir, 
 	# Uses filename and size to check for duplicates
-	echo "Copying SD card to $incoming_dir" >> /tmp/usb_add_info
+	echo "Copying SD card to $target_dir" >> /tmp/usb_add_info
 	# Blink internet LED while rsync is working (normally either on or off)
 	/usr/sbin/pioctl internet 2
-	if [ $store_fs == "tntfs" ];then
+	if [ $store_fs == "tntfs" ]; then
 		# if ntfs then avoid timestamp errors
 		rsync_opt="vrm"
 	else
 		rsync_opt="vrtm"
 	fi
-	printf '%s\n' "$src_chk" | while IFS= read -r folder;do
+	printf '%s\n' "$src_chk" | while IFS= read -r folder; do
 		rsync -$rsync_opt --size-only --modify-window=2 --remove-source-files --log-file "$incoming_dir/$last_file_date.rsync.log" --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT/$folder/" "$target_dir"
+		# Remove empty folders. Rsync only removes files
+		find "$SD_MOUNTPOINT/$folder"/* -type d -print | sed '1!G;h;$!d' | while IFS= read -r rm_folder; do
+			rmdir "$rm_folder"
+		done
 	done
 fi
 # Stop swap on backup disk to aid unmount
-if [ -n $(cat /proc/swaps | grep $mountpoint) ];then
+if [ -n $(cat /proc/swaps | grep $mountpoint) ]; then
 	swapoff "$mountpoint/STORE_DIR"/swapfile
 fi
 # Write memory buffer to disk
 sync
 # Stop internet LED blinking when rsync is done (Wifidisk scripts seem to do this twice, for good measure)
 /usr/sbin/pioctl internet 3
+sleep 0.5
 /usr/sbin/pinctl internet 3
 rm /tmp/backup.pid
 exit
