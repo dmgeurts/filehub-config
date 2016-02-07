@@ -88,7 +88,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ];then
 	echo "Copying SD card to $incoming_dir" >> /tmp/usb_add_info
 	# Blink internet LED while rsync is working (normally either on or off)
 	/usr/sbin/pioctl internet 2
-	if [ store_fs == "ntfs" ];then
+	if [ $store_fs == "ntfs" ];then
 		# if ntfs then avoid timestamp errors
 		rsync_opt="vrm"
 	else
