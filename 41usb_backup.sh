@@ -79,16 +79,19 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 ]; then
 		sources="$sources"$'\n'"$(cat "$store_mountpoint/$STORE_DIR"/sources.cnf)"
 	fi
 	# Check folders for files to copy, remove empty folders from the list
-	src_chk=""
 	printf '%s\n' "$sources" | while IFS= read -r folder; do
-		if [ "$(ls -A "$SD_MOUNTPOINT/$folder/")" ]; then
-			src_chk="$src_chk"$'\n'"$folder"
+		if [ "$(find "$SD_MOUNTPOINT/$folder" -type f -print)" ]; then
+			if [ -z $source_list ]; then
+				source_list=$folder
+			else
+				source_list="$source_list"$'\n'"$folder"
+			fi
 		fi
 	done
 fi
 # If both a valid store drive and SD card are mounted, and we have files to backup,
 # copy the SD card contents to the store drive
-if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $src_chk ]; then
+if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $source_list ]; then
 	# Get the date of the latest file on the SD card
 	last_file="$SD_MOUNTPOINT"/DCIM/`ls -1c "$SD_MOUNTPOINT"/DCIM/ | tail -1`
 	last_file_date=`stat "$last_file" | grep Modify | sed -e 's/Modify: //' -e 's/[:| ]/_/g' | cut -d . -f 1`
