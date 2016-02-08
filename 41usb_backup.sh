@@ -114,7 +114,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $source_list ]; then
 	else
 		rsync_opt="vrtm"
 	fi
-	printf '%s\n' "$src_chk" | while IFS= read -r folder; do
+	printf '%s\n' "$source_list" | while IFS= read -r folder; do
 		rsync -$rsync_opt --size-only --modify-window=2 --remove-source-files --log-file "$incoming_dir/$last_file_date.rsync.log" --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT/$folder/" "$target_dir"
 		echo "Copy of $folder done" >> /tmp/usb_add_info
 		# Remove empty folders. Rsync only removes files
