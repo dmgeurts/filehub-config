@@ -5,49 +5,71 @@
 # it doesn't have patch. Either use the following with a bootstrapped busybox, or have
 # EnterRouterMode.sh replace the file. YMMV...
 
+# I disabled swap here and by setting the firmware variable. If you have trouble with slow
+# rsync. Then check the swap files, automatic remounting left a non existing swap at
+# "/.vst/swapfile" which couldn't be removed (other than by reboot). Better idea was to
+# set the swap file just before starting rsync and then turn it off again after.
+
 # /etc/init.d/start_all.sh.patch
 #--- /etc/init.d/start_all.sh     Sun Feb  7 21:30:58 2016
 #+++ /data/UsbDisk1/Volume1/start_all.sh Sun Feb  7 21:29:51 2016
-#@@ -13,8 +13,9 @@
 # fi
+#+# Swap file started from backup script, remounting disks didn't play nice
 # echo "swapon"
+#+# Prevent sdcard from being used for swap
 # while read device mountpoint fstype remainder; do
 #-       str_func_strstr "$mountpoint" "UsbDisk"
 #-        if [ $? -eq 1 ];then
-#+       udisk=$(str_func_strstr "$mountpoint" "UsbDisk")
-#+       sdcard=$(str_func_strstr "$mountpoint" "UsbDisk1")
-#+        if [ $udisk -eq 1 -a $sdcard -eq 0 ];then
-#                echo "mountpoint:$mountpoint" >> /tmp/usb_add_info
-#                 echo /etc/init.d/swap $mountpoint >> /tmp/usb_add_info
-#                 echo 1 > /proc/sys/vm/drop_caches
+#+#       udisk=$(str_func_strstr "$mountpoint" "UsbDisk")
+#+#       sdcard=$(str_func_strstr "$mountpoint" "UsbDisk1")
+#+#        if [ $udisk -eq 1 -a $sdcard -eq 0 ];then
+#-                echo "mountpoint:$mountpoint" >> /tmp/usb_add_info
+#+#                echo "mountpoint:$mountpoint" >> /tmp/usb_add_info
+#-                 echo /etc/init.d/swap $mountpoint >> /tmp/usb_add_info
+#+#                 echo /etc/init.d/swap $mountpoint >> /tmp/usb_add_info
+#-                 echo 1 > /proc/sys/vm/drop_caches
+#+#                 echo 1 > /proc/sys/vm/drop_caches
+#-                /etc/init.d/swap $mountpoint
+#+#                /etc/init.d/swap $mountpoint
+#-		break
+#+#		break
+#-       fi
+#+#        fi
+#-done < /proc/mounts
+#+#done < /proc/mounts
+#echo "start udev"
+#/etc/init.d/udev
+
 
 # replace start_all.sh (only needed once)
 cat <<'EOF' > /etc/init.d/start_all.sh
 #!/bin/sh
 . /etc/init.d/vstfunc
 #swapon
-#   mount.exfat-fuse -o rw,umask=000,noatime,nonempty,asy
+#	mount.exfat-fuse -o rw,umask=000,noatime,nonempty,asy
 echo "remount"
 if [ ! -f lib/modules/2.6.21/kernel/drivers/tuxera/texfat.ko ]; then
 while read device mountpoint fstype remainder; do
-    if [ "$fstype" == "fuseblk" ];then
-        /usr/sbin/umount2 $mountpoint
-        mount.exfat-fuse -o rw,umask=000,noatime,nonempty,async,iocharset=utf8 $device $mountpoint
-    fi
+	if [ "$fstype" == "fuseblk" ];then
+		/usr/sbin/umount2 $mountpoint
+		mount.exfat-fuse -o rw,umask=000,noatime,nonempty,async,iocharset=utf8 $device $mountpoint
+	fi
 done < /proc/mounts
 fi
-echo "swapon"
-while read device mountpoint fstype remainder; do
-	udisk=$(str_func_strstr "$mountpoint" "UsbDisk")
-	sdcard=$(str_func_strstr "$mountpoint" "UsbDisk1")
-    if [ $udisk -eq 1 -a $sdcard -eq 0 ];then
-		echo "mountpoint:$mountpoint" >> /tmp/usb_add_info
-        echo /etc/init.d/swap $mountpoint >> /tmp/usb_add_info
-        echo 1 > /proc/sys/vm/drop_caches
-        /etc/init.d/swap $mountpoint
-		break
-    fi
-done < /proc/mounts
+# Swap file started from backup script, remounting disks didn't play nice
+#echo "swapon"
+# Prevent sdcard from being used for swap
+#while read device mountpoint fstype remainder; do
+#	udisk=$(str_func_strstr "$mountpoint" "UsbDisk")
+#	sdcard=$(str_func_strstr "$mountpoint" "UsbDisk1")
+#        if [ $udisk -eq 1 -a $sdcard -eq 0 ];then
+#		echo "mountpoint:$mountpoint" >> /tmp/usb_add_info
+#                echo /etc/init.d/swap $mountpoint >> /tmp/usb_add_info
+#                echo 1 > /proc/sys/vm/drop_caches
+#                /etc/init.d/swap $mountpoint
+#		break
+#        fi
+#done < /proc/mounts
 #start udev
 #echo "start udev"
 #/etc/init.d/udev
@@ -67,8 +89,8 @@ netinit.sh
 #/usr/sbin/led_control
 # Run the START scripts.
 for i in /etc/rc.d/rc1.d/S* ; do
-    # Check if the subsystem is already up.
-    subsys=${i#/etc/rc.d/rc1.d/S??}
+        # Check if the subsystem is already up.
+        subsys=${i#/etc/rc.d/rc1.d/S??}
 	str_func_strstr "$i" "S32smbd"
 	if [ $? -eq 1 ]; then
 		echo "smb not start"
@@ -82,7 +104,7 @@ done
 telnetd &
 /usr/sbin/au &
 if [ -f /usr/sbin/usbdongled ]; then
-    usbdongled &
+	usbdongled &
 fi
 EOF
 # Make executable

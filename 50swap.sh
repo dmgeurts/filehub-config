@@ -13,8 +13,9 @@ echo "No SWAP= setting found in /etc/firmware, not modifying swap"
 }
 else
 {
-# enable SWAP
-sed -i 's/^SWAP=.*/SWAP=swap/' /etc/firmware
+# Disable system SWAP, when WD01 remounts storage it doesn't issue a swapoff.
+# Instead we start and stop swap in the backup script.
+sed -i 's/^SWAP=.*/SWAP=noswap/' /etc/firmware
 # create swap init script, to overwrite the "exit 0" one
 cat <<'EOF' > /etc/init.d/swap
 # Swap initialization on external medium

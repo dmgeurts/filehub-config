@@ -7,8 +7,16 @@ sed -i '/^exit$/d' /etc/udev/script/add_usb_storage.sh
 # Add call to usb backup script after drive mounts
 cat <<'EOF' >> /etc/udev/script/add_usb_storage.sh
 #START_MOD
-# Run backup script
-/etc/udev/script/usb_backup.sh &
+# Weirdly, inserting storage results in a remount of all storage.
+# This script is thus run twice in paralel, which causes problems.
+# Only run the backup if the SDcard was inserted
+if [ $MOUNTPATH/$HDTAG$HDNUM == "/data/UsbDisk1" ]; then
+	# Wait for the other script to finish
+	sleep 10
+	echo "Running backup script due to insertion of $1" >> /tmp/usb_add_info
+	# Run backup script
+	/etc/udev/script/usb_backup.sh &
+fi
 exit
 #END_MOD
 EOF
@@ -55,10 +63,6 @@ check_storedrive() {
 			store_id=$(udevadm info -a -p  $(udevadm info -q path -n ${device:0:8}) | grep -m 1 "ATTRS{serial}" | cut -d'"' -f2)
 			# Grab filesystem
 			store_fs=$fstype
-			# Check if we have a swap file here that isn't already in use
-			if [ -z "$(cat /proc/swaps | grep $mountpoint)" -a -e "$mountpoint/$STORE_DIR"/swapfile ]; then
-				swapon "$mountpoint/$STORE_DIR"/swapfile
-			fi
 			return 1
 		fi
 	done < /proc/mounts
@@ -72,26 +76,40 @@ storedrive=$?
 # If both a valid store drive and SD card are mounted,
 # check if there are files to backup
 if [ $sdcard -eq 1 -a $storedrive -eq 1 ]; then
-	# If no sources.cnf is found we backup DCIM only
-	sources="DCIM"
 	# Check to see if there's more than DCIM to check
-	if [ -e "$store_mountpoint/$STORE_DIR"/sources.cnf ]; then
-		sources="$sources"$'\n'"$(cat "$store_mountpoint/$STORE_DIR"/sources.cnf)"
+	if [ -f "$store_mountpoint/$STORE_DIR"/sources.cnf ]; then
+		. "$store_mountpoint/$STORE_DIR/sources.cnf"
+		echo "Found file with: $sources" >> /tmp/usb_add_info
 	fi
+	# If no folders are found in sources.cnf check DCIM
+	if [ -z "$sources" ]; then
+		sources="DCIM"
+	fi
+	# Use temporary folder to work around pipeline subshell, can't use mkfifo etc (lose output)
+	echo "$sources" > /tmp/bkp_sources
 	# Check folders for files to copy, remove empty folders from the list
-	printf '%s\n' "$sources" | while IFS= read -r folder; do
-		if [ "$(find "$SD_MOUNTPOINT/$folder" -type f -print)" ]; then
-			if [ -z $source_list ]; then
-				source_list=$folder
+	while IFS= read -r source; do
+		echo "Checking if not empty: $source" >> /tmp/usb_add_info
+		if [ "$(find "$SD_MOUNTPOINT/$source" -type f -print)" ]; then
+			if [ -z "$source_list" ]; then
+				source_list="$source"
 			else
-				source_list="$source_list"$'\n'"$folder"
+				source_list="$source_list"$'\n'"$source"
 			fi
 		fi
-	done
+	done < /tmp/bkp_sources
+	rm /tmp/bkp_sources
+	echo "Source folders found:" >> /tmp/usb_add_info
+	echo "$source_list" >> /tmp/usb_add_info
 fi
 # If both a valid store drive and SD card are mounted, and we have files to backup,
 # copy the SD card contents to the store drive
-if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $source_list ]; then
+if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -n "$source_list" ]; then
+	# Check if we have a swap file on the target that isn't already in use
+	if [ -z "$(grep "$store_mountpoint" /proc/swaps)" -a -e "$store_mountpoint/$STORE_DIR"/swapfile ]; then
+		echo "Enable swap at $store_mountpoint/$STORE_DIR/swapfile" >> /tmp/usb_add_info
+		swapon "$store_mountpoint/$STORE_DIR"/swapfile
+	fi
 	# Get the date of the latest file on the SD card
 	last_file="$SD_MOUNTPOINT"/DCIM/`ls -1c "$SD_MOUNTPOINT"/DCIM/ | tail -1`
 	last_file_date=`stat "$last_file" | grep Modify | sed -e 's/Modify: //' -e 's/[:| ]/_/g' | cut -d . -f 1`
@@ -103,7 +121,7 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $source_list ]; then
 	partial_dir="$store_mountpoint/$PHOTO_DIR"/incoming/.partial
 	mkdir -p $target_dir
 	mkdir -p $incoming_dir
-	# Copy the files from the sd card to the target dir, 
+	# Copy the files from the sd card to the target dir,
 	# Uses filename and size to check for duplicates
 	echo "Copying SD card to $target_dir" >> /tmp/usb_add_info
 	# Blink internet LED while rsync is working (normally either on or off)
@@ -112,20 +130,28 @@ if [ $sdcard -eq 1 -a $storedrive -eq 1 -a -z $source_list ]; then
 		# if ntfs then avoid timestamp errors
 		rsync_opt="vrm"
 	else
+		# Otherwise preserve timestamps
 		rsync_opt="vrtm"
 	fi
-	printf '%s\n' "$source_list" | while IFS= read -r folder; do
-		rsync -$rsync_opt --size-only --modify-window=2 --remove-source-files --log-file "$incoming_dir/$last_file_date.rsync.log" --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT/$folder/" "$target_dir"
-		echo "Copy of $folder done" >> /tmp/usb_add_info
+	printf '%s\n' "$source_list" | while IFS= read -r backup_src; do
+		echo "Running rsync for $backup_src" >> /tmp/usb_add_info
+		# Create the target in the backup folder, change path to single folder
+		backup_dst=$(echo "$backup_src" | sed 's/\//./g')
+		mkdir "$target_dir/$backup_dst"
+		# Backup to the created folder
+		rsync -$rsync_opt --size-only --modify-window=2 --remove-source-files --log-file "$incoming_dir/$last_file_date.rsync.log" --partial-dir "$partial_dir" --exclude ".?*" "$SD_MOUNTPOINT/$backup_src/" "$target_dir/$backup_dst"
+		echo "Copy of $backup_src to $backup_dst done" >> /tmp/usb_add_info
 		# Remove empty folders. Rsync only removes files
-		find "$SD_MOUNTPOINT/$folder"/* -type d -print | sed '1!G;h;$!d' | while IFS= read -r rm_folder; do
+		find "$SD_MOUNTPOINT/$backup_src"/* -type d -print | sed '1!G;h;$!d' | while IFS= read -r rm_folder; do
 			rmdir "$rm_folder"
 		done
 	done
+	backup_done=1
 fi
 # Stop swap on backup disk to aid unmount
-if [ -n $(cat /proc/swaps | grep $mountpoint) ]; then
-	swapoff "$mountpoint/$STORE_DIR"/swapfile
+if [ -n "$(grep "$store_mountpoint" /proc/swaps)" ]; then
+	echo "Disable swap file" >> /tmp/usb_add_info
+	swapoff "$store_mountpoint/$STORE_DIR"/swapfile
 fi
 # Write memory buffer to disk
 sync
@@ -134,7 +160,11 @@ sync
 sleep 0.5
 /usr/sbin/pinctl internet 3
 rm /tmp/backup.pid
-echo "Backup script done..." >> /tmp/usb_add_info
+if [ $backup_done -eq 1 ]; then
+	echo "Backup done..." >> /tmp/usb_add_info
+else
+	echo "Nothing to backup..." >> /tmp/usb_add_info
+fi
 exit
 EOF
 
